@@ -1,7 +1,8 @@
 param(
     [string]$Version = "0.26.1-glmocr-local4",
     [string]$Configuration = "Release",
-    [string]$OutputDirectory = ".artifacts/nuget-glm-ocr"
+    [string]$OutputDirectory = ".artifacts/nuget-glm-ocr",
+    [switch]$ApplyLocalLlamaCppPatch = $true
 )
 
 $ErrorActionPreference = "Stop"
@@ -18,6 +19,57 @@ $tempPath = Join-Path $repoRoot ".artifacts/nuget-glm-ocr-temp"
 Write-Host "Packing GLM-OCR local LLamaSharp packages"
 Write-Host "Version: $Version"
 Write-Host "Output : $outputPath"
+
+function Apply-OptionalLlamaCppPatch {
+    param(
+        [string]$RepositoryRoot
+    )
+
+    $patchPath = Join-Path $RepositoryRoot "scripts/patches/llama.cpp.mtmd-tools.patch"
+    if (-not (Test-Path $patchPath)) {
+        Write-Host "No local llama.cpp patch found at '$patchPath'; continuing."
+        return
+    }
+
+    $llamaCppRoot = Join-Path $RepositoryRoot "llama.cpp"
+    if (-not (Test-Path $llamaCppRoot)) {
+        throw "llama.cpp submodule directory was not found at '$llamaCppRoot'."
+    }
+
+    Write-Host "Checking optional llama.cpp local patch..."
+    Push-Location $llamaCppRoot
+    try {
+        # Already applied? Keep going without changing local work.
+        & git apply --reverse --check $patchPath *> $null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "Local llama.cpp patch is already applied."
+            return
+        }
+
+        # Not applied yet; apply now.
+        & git apply --check $patchPath *> $null
+        if ($LASTEXITCODE -ne 0) {
+            throw "Unable to apply local llama.cpp patch '$patchPath'. Resolve submodule state first."
+        }
+
+        & git apply $patchPath
+        if ($LASTEXITCODE -ne 0) {
+            throw "Applying local llama.cpp patch '$patchPath' failed."
+        }
+
+        Write-Host "Applied local llama.cpp patch."
+    }
+    finally {
+        Pop-Location
+    }
+}
+
+if ($ApplyLocalLlamaCppPatch) {
+    Apply-OptionalLlamaCppPatch -RepositoryRoot $repoRoot
+}
+else {
+    Write-Host "Skipping optional llama.cpp local patch (ApplyLocalLlamaCppPatch disabled)."
+}
 
 $nugetCommand = $null
 $nugetInPath = Get-Command nuget -ErrorAction SilentlyContinue

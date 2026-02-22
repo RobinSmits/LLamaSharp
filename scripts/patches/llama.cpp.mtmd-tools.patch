@@ -1,0 +1,67 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 69da97dc1..a6296e46f 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -210,7 +210,7 @@ if (LLAMA_BUILD_COMMON AND LLAMA_BUILD_EXAMPLES)
+     add_subdirectory(pocs)
+ endif()
+ 
+-if (LLAMA_BUILD_COMMON AND LLAMA_BUILD_TOOLS)
++if (LLAMA_BUILD_TOOLS)
+     add_subdirectory(tools)
+ endif()
+ 
+diff --git a/tools/CMakeLists.txt b/tools/CMakeLists.txt
+index 518f8b9ae..d971075bd 100644
+--- a/tools/CMakeLists.txt
++++ b/tools/CMakeLists.txt
+@@ -14,6 +14,13 @@ llama_add_compile_flags()
+ 
+ if (EMSCRIPTEN)
+ else()
++    # Allow a reduced tool build when LLAMA_BUILD_COMMON is disabled.
++    # This is used by local packaging flows that only need the public mtmd shared library.
++    if (NOT LLAMA_BUILD_COMMON)
++        add_subdirectory(mtmd)
++        return()
++    endif()
++
+     add_subdirectory(batched-bench)
+     add_subdirectory(gguf-split)
+     add_subdirectory(imatrix)
+diff --git a/tools/mtmd/CMakeLists.txt b/tools/mtmd/CMakeLists.txt
+index 3be3c27e8..796997086 100644
+--- a/tools/mtmd/CMakeLists.txt
++++ b/tools/mtmd/CMakeLists.txt
+@@ -71,7 +71,9 @@ endif()
+ 
+ if (TARGET BUILD_INFO)
+     add_dependencies(mtmd        BUILD_INFO)
+-    add_dependencies(mtmd-helper BUILD_INFO)
++    if (TARGET mtmd-helper)
++        add_dependencies(mtmd-helper BUILD_INFO)
++    endif()
+ endif()
+ 
+ # if mtmd is linked against common, we throw an error
+@@ -88,11 +90,13 @@ add_executable(llama-gemma3-cli   deprecation-warning.cpp)
+ add_executable(llama-minicpmv-cli deprecation-warning.cpp)
+ add_executable(llama-qwen2vl-cli  deprecation-warning.cpp)
+ 
+-set(TARGET llama-mtmd-cli)
+-add_executable         (${TARGET} mtmd-cli.cpp)
+-set_target_properties  (${TARGET} PROPERTIES OUTPUT_NAME llama-mtmd-cli)
+-if(LLAMA_TOOLS_INSTALL)
+-    install(TARGETS ${TARGET} RUNTIME)
++if (TARGET common)
++    set(TARGET llama-mtmd-cli)
++    add_executable         (${TARGET} mtmd-cli.cpp)
++    set_target_properties  (${TARGET} PROPERTIES OUTPUT_NAME llama-mtmd-cli)
++    if(LLAMA_TOOLS_INSTALL)
++        install(TARGETS ${TARGET} RUNTIME)
++    endif()
++    target_link_libraries  (${TARGET} PRIVATE common mtmd Threads::Threads)
++    target_compile_features(${TARGET} PRIVATE cxx_std_17)
+ endif()
+-target_link_libraries  (${TARGET} PRIVATE common mtmd Threads::Threads)
+-target_compile_features(${TARGET} PRIVATE cxx_std_17)
