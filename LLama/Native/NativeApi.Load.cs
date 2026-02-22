@@ -1,5 +1,7 @@
 using LLama.Exceptions;
 using System;
+using System.Collections.Generic;
+using System.IO;
 using LLama.Abstractions;
 
 namespace LLama.Native
@@ -41,6 +43,9 @@ namespace LLama.Native
 
             // Init llama.cpp backend
             llama_backend_init();
+
+            // Ensure split ggml backends are discovered before any model load.
+            EnsureBackendsLoaded();
         }
 
 #if NET5_0_OR_GREATER
@@ -110,7 +115,64 @@ namespace LLama.Native
         internal const string ggmlLibraryName = "ggml";
         internal const string ggmlBaseLibraryName = "ggml-base";
 
+        private static readonly object _runtimeDirectoriesLock = new();
+        private static readonly HashSet<string> _runtimeDirectories = new(StringComparer.OrdinalIgnoreCase);
+
         private static INativeLibrary? _loadedLLamaLibrary = null;
         private static INativeLibrary? _loadedMtmdLibrary = null;
+
+        internal static void RegisterRuntimeDirectory(string? directory)
+        {
+            if (string.IsNullOrWhiteSpace(directory))
+                return;
+
+            string normalizedPath;
+            try
+            {
+                normalizedPath = Path.GetFullPath(directory);
+            }
+            catch
+            {
+                return;
+            }
+
+            lock (_runtimeDirectoriesLock)
+            {
+                _runtimeDirectories.Add(normalizedPath);
+            }
+        }
+
+        private static string[] GetRegisteredRuntimeDirectories()
+        {
+            lock (_runtimeDirectoriesLock)
+            {
+                var directories = new string[_runtimeDirectories.Count];
+                _runtimeDirectories.CopyTo(directories);
+                return directories;
+            }
+        }
+
+        private static void EnsureBackendsLoaded()
+        {
+            foreach (var directory in GetRegisteredRuntimeDirectories())
+            {
+                _ = TryLoadBackendsFromPath(directory);
+            }
+
+            // Also run generic discovery to honor default loader behavior.
+            _ = TryLoadAllBackends();
+
+            try
+            {
+                var backendCount = ggml_backend_dev_count();
+                NativeLibraryConfig.LLama.LogCallback?.Invoke(
+                    LLamaLogLevel.Debug,
+                    $"ggml backend discovery finished with {backendCount} backend device(s).\n");
+            }
+            catch
+            {
+                // Logging should never block startup if probing fails.
+            }
+        }
     }
 }

@@ -444,6 +444,79 @@ namespace LLama.Native
         //[DllImport(libraryName, CallingConvention = CallingConvention.Cdecl)]
         //public static void llama_model* llama_get_model(SafeLLamaContextHandle ctx);
 
+        [DllImport(ggmlBaseLibraryName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "ggml_backend_load_all")]
+        private static extern void ggml_backend_load_all_ggml_base();
+
+        [DllImport(ggmlLibraryName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "ggml_backend_load_all")]
+        private static extern void ggml_backend_load_all_ggml();
+
+        [DllImport(ggmlBaseLibraryName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "ggml_backend_load_all_from_path")]
+        private static extern void ggml_backend_load_all_from_path_ggml_base(string path);
+
+        [DllImport(ggmlLibraryName, CallingConvention = CallingConvention.Cdecl, EntryPoint = "ggml_backend_load_all_from_path")]
+        private static extern void ggml_backend_load_all_from_path_ggml(string path);
+
+        internal static bool TryLoadAllBackends()
+        {
+            try
+            {
+                ggml_backend_load_all_ggml_base();
+                return true;
+            }
+            catch (EntryPointNotFoundException)
+            {
+            }
+            catch (DllNotFoundException)
+            {
+            }
+
+            try
+            {
+                ggml_backend_load_all_ggml();
+                return true;
+            }
+            catch (EntryPointNotFoundException)
+            {
+            }
+            catch (DllNotFoundException)
+            {
+            }
+
+            return false;
+        }
+
+        internal static bool TryLoadBackendsFromPath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return false;
+
+            try
+            {
+                ggml_backend_load_all_from_path_ggml_base(path);
+                return true;
+            }
+            catch (EntryPointNotFoundException)
+            {
+            }
+            catch (DllNotFoundException)
+            {
+            }
+
+            try
+            {
+                ggml_backend_load_all_from_path_ggml(path);
+                return true;
+            }
+            catch (EntryPointNotFoundException)
+            {
+            }
+            catch (DllNotFoundException)
+            {
+            }
+
+            return false;
+        }
+
         /// <summary>
         /// Get the number of available backend devices
         /// </summary>

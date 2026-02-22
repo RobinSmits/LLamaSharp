@@ -21,11 +21,13 @@
         <file src="runtimes/deps/noavx/ggml.dll" target="LLamaSharpRuntimes\win-x64\native\noavx\ggml.dll" />
         <file src="runtimes/deps/noavx/ggml-base.dll" target="LLamaSharpRuntimes\win-x64\native\noavx\ggml-base.dll" />
         <file src="runtimes/deps/noavx/ggml-cpu.dll" target="LLamaSharpRuntimes\win-x64\native\noavx\ggml-cpu.dll" />
+        <file src="runtimes/deps/noavx/libomp140.x86_64.dll" target="LLamaSharpRuntimes\win-x64\native\noavx\libomp140.x86_64.dll" />
         <file src="runtimes/deps/noavx/llama.dll" target="LLamaSharpRuntimes\win-x64\native\noavx\llama.dll" />
         <file src="runtimes/deps/noavx/mtmd.dll" target="LLamaSharpRuntimes\win-x64\native\noavx\mtmd.dll" />
 
         <file src="runtimes/deps/avx/ggml-base.dll" target="LLamaSharpRuntimes\win-x64\native\avx\ggml-base.dll" />
         <file src="runtimes/deps/avx/ggml-cpu.dll" target="LLamaSharpRuntimes\win-x64\native\avx\ggml-cpu.dll" />
+        <file src="runtimes/deps/avx/libomp140.x86_64.dll" target="LLamaSharpRuntimes\win-x64\native\avx\libomp140.x86_64.dll" />
         <file src="runtimes/deps/avx/llama.dll" target="LLamaSharpRuntimes\win-x64\native\avx\llama.dll" />
         <file src="runtimes/deps/avx/ggml.dll" target="LLamaSharpRuntimes\win-x64\native\avx\ggml.dll" />
         <file src="runtimes/deps/avx/mtmd.dll" target="LLamaSharpRuntimes\win-x64\native\avx\mtmd.dll" />
@@ -33,12 +35,14 @@
         <file src="runtimes/deps/avx2/ggml.dll" target="LLamaSharpRuntimes\win-x64\native\avx2\ggml.dll" />
         <file src="runtimes/deps/avx2/ggml-base.dll" target="LLamaSharpRuntimes\win-x64\native\avx2\ggml-base.dll" />
         <file src="runtimes/deps/avx2/ggml-cpu.dll" target="LLamaSharpRuntimes\win-x64\native\avx2\ggml-cpu.dll" />
+        <file src="runtimes/deps/avx2/libomp140.x86_64.dll" target="LLamaSharpRuntimes\win-x64\native\avx2\libomp140.x86_64.dll" />
         <file src="runtimes/deps/avx2/llama.dll" target="LLamaSharpRuntimes\win-x64\native\avx2\llama.dll" />
         <file src="runtimes/deps/avx2/mtmd.dll" target="LLamaSharpRuntimes\win-x64\native\avx2\mtmd.dll" />
 
         <file src="runtimes/deps/avx512/ggml.dll" target="LLamaSharpRuntimes\win-x64\native\avx512\ggml.dll" />
         <file src="runtimes/deps/avx512/ggml-base.dll" target="LLamaSharpRuntimes\win-x64\native\avx512\ggml-base.dll" />
         <file src="runtimes/deps/avx512/ggml-cpu.dll" target="LLamaSharpRuntimes\win-x64\native\avx512\ggml-cpu.dll" />
+        <file src="runtimes/deps/avx512/libomp140.x86_64.dll" target="LLamaSharpRuntimes\win-x64\native\avx512\libomp140.x86_64.dll" />
         <file src="runtimes/deps/avx512/llama.dll" target="LLamaSharpRuntimes\win-x64\native\avx512\llama.dll" />
         <file src="runtimes/deps/avx512/mtmd.dll" target="LLamaSharpRuntimes\win-x64\native\avx512\mtmd.dll" />
 
@@ -46,6 +50,7 @@
         <file src="runtimes/deps/win-arm64/ggml.dll" target="LLamaSharpRuntimes\win-arm64\native\ggml.dll" />
         <file src="runtimes/deps/win-arm64/ggml-base.dll" target="LLamaSharpRuntimes\win-arm64\native\ggml-base.dll" />
         <file src="runtimes/deps/win-arm64/ggml-cpu.dll" target="LLamaSharpRuntimes\win-arm64\native\ggml-cpu.dll" />
+        <file src="runtimes/deps/win-arm64/libomp140.aarch64.dll" target="LLamaSharpRuntimes\win-arm64\native\libomp140.aarch64.dll" />
         <file src="runtimes/deps/win-arm64/llama.dll" target="LLamaSharpRuntimes\win-arm64\native\llama.dll" />
         <file src="runtimes/deps/win-arm64/mtmd.dll" target="LLamaSharpRuntimes\win-arm64\native\mtmd.dll" />
 

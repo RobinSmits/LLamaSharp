@@ -127,17 +127,25 @@ namespace LLama.Native
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 cudaPath = Environment.GetEnvironmentVariable("CUDA_PATH");
-                if (cudaPath is null)
+                if (cudaPath is not null)
                 {
-                    return -1;
+                    // Ensuring cuda bin path is reachable. Especially for MAUI environment.
+                    string cudaBinPath = Path.Combine(cudaPath, "bin");
+                    if (Directory.Exists(cudaBinPath))
+                    {
+                        AddDllDirectory(cudaBinPath);
+                    }
+                    version = GetCudaVersionFromPath(cudaPath);
                 }
-                //Ensuring cuda bin path is reachable. Especially for MAUI environment.
-                string cudaBinPath = Path.Combine(cudaPath, "bin");
-                if (Directory.Exists(cudaBinPath))
+
+                if (string.IsNullOrEmpty(version))
                 {
-                    AddDllDirectory(cudaBinPath);
+                    var driverMajorVersion = TryGetCudaDriverMajorVersionWindows();
+                    if (driverMajorVersion > 0)
+                    {
+                        return driverMajorVersion;
+                    }
                 }
-                version = GetCudaVersionFromPath(cudaPath);
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
@@ -213,6 +221,38 @@ namespace LLama.Native
                 return string.Empty;
             }
         }
+
+        // CUDA toolkit env vars are optional on end-user machines. Probe the driver directly on Windows.
+        private static int TryGetCudaDriverMajorVersionWindows()
+        {
+            try
+            {
+                // 0 = success
+                if (cuInit(0) != 0)
+                {
+                    return -1;
+                }
+
+                if (cuDriverGetVersion(out var driverVersion) != 0 || driverVersion <= 0)
+                {
+                    return -1;
+                }
+
+                // CUDA reports e.g. 12080 for 12.8.
+                return driverVersion / 1000;
+            }
+            catch
+            {
+                return -1;
+            }
+        }
+
+        [DllImport("nvcuda.dll", CallingConvention = CallingConvention.Cdecl)]
+        private static extern int cuInit(uint flags);
+
+        [DllImport("nvcuda.dll", CallingConvention = CallingConvention.Cdecl)]
+        private static extern int cuDriverGetVersion(out int driverVersion);
+
         // Put it here to avoid calling NativeApi when getting the cuda version.
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         internal static extern int AddDllDirectory(string NewDirectory);

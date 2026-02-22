@@ -117,10 +117,12 @@ namespace LLama.Native
                     dependencyPaths.Add(Path.Combine(currentRuntimeDirectory, $"{libPrefix}ggml{ext}"));
                     
                     // Now, we will loop through our dependencyPaths and try to load them one by one
+                    var requiredDependencyMissing = false;
                     foreach (var dependencyPath in dependencyPaths)
                     {
                         // Try to load the dependency
                         var dependencyResult = TryLoad(dependencyPath, description.SearchDirectories, config.LogCallback);
+                        var isRequiredDependency = IsRequiredDependency(dependencyPath, library.Metadata, ext, libPrefix);
                         
                         // If we successfully loaded the library, log it
                         if (dependencyResult != IntPtr.Zero)
@@ -130,8 +132,20 @@ namespace LLama.Native
                         else
                         {
                             Log($"Failed loading dependency '{dependencyPath}'", LLamaLogLevel.Info, config.LogCallback);
+                            if (isRequiredDependency)
+                            {
+                                requiredDependencyMissing = true;
+                                Log(
+                                    $"Required dependency '{dependencyPath}' is missing; skipping candidate '{path}'.",
+                                    LLamaLogLevel.Warning,
+                                    config.LogCallback);
+                                break;
+                            }
                         }
                     }
+
+                    if (requiredDependencyMissing)
+                        continue;
                     
                     // Try to load the main library
                     var result = TryLoad(path, description.SearchDirectories, config.LogCallback);
@@ -169,6 +183,7 @@ namespace LLama.Native
                 Log($"Found full path file '{fullPath}' for relative path '{path}'", LLamaLogLevel.Debug, logCallback);
                 if (NativeLibrary.TryLoad(fullPath, out var handle))
                 {
+                    NativeApi.RegisterRuntimeDirectory(Path.GetDirectoryName(fullPath));
                     Log($"Successfully loaded '{fullPath}'", LLamaLogLevel.Info, logCallback);
                     return handle;
                 }
@@ -212,6 +227,35 @@ namespace LLama.Native
                 message += "\n";
 
             logCallback?.Invoke(level, message);
+        }
+
+        private static bool IsRequiredDependency(
+            string dependencyPath,
+            NativeLibraryMetadata? metadata,
+            string fileExtension,
+            string libPrefix)
+        {
+            var fileName = Path.GetFileName(dependencyPath);
+            if (string.IsNullOrEmpty(fileName))
+                return false;
+
+            bool IsLibrary(string baseName)
+            {
+                var expected = $"{libPrefix}{baseName}{fileExtension}";
+                return string.Equals(fileName, expected, StringComparison.OrdinalIgnoreCase);
+            }
+
+            // Always required for llama.cpp bootstrap regardless of backend.
+            if (IsLibrary("ggml-base") || IsLibrary("ggml-cpu") || IsLibrary("ggml"))
+                return true;
+
+            // Backend-specific plugin dependencies.
+            if (metadata?.UseCuda == true && IsLibrary("ggml-cuda"))
+                return true;
+            if (metadata?.UseVulkan == true && IsLibrary("ggml-vulkan"))
+                return true;
+
+            return false;
         }
 
 #if NET6_0_OR_GREATER

@@ -25,6 +25,8 @@ public static partial class NativeApi
         [MarshalAs(UnmanagedType.I1)] public bool warmup;
         public int image_min_tokens;
         public int image_max_tokens;
+        public IntPtr cb_eval;
+        public IntPtr cb_eval_user_data;
     }
 
     [DllImport(mtmdLibraryName, EntryPoint = "mtmd_default_marker", CallingConvention = CallingConvention.Cdecl)]
