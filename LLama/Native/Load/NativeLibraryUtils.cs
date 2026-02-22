@@ -3,6 +3,7 @@ using LLama.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace LLama.Native
 {
@@ -62,10 +63,14 @@ namespace LLama.Native
 
                     // List which will hold all paths to dependencies to load
                     var dependencyPaths = new List<string>();
-                    
-                    // We should always load ggml-base from the current runtime directory
-                    dependencyPaths.Add(Path.Combine(currentRuntimeDirectory, $"{libPrefix}ggml-base{ext}"));
+                    var dependencyPathSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+                    void AddDependency(string dependencyPath)
+                    {
+                        if (dependencyPathSet.Add(dependencyPath))
+                            dependencyPaths.Add(dependencyPath);
+                    }
+                    
                     // If the library has metadata, we can check if we need to load additional dependencies
                     if (library.Metadata != null)
                     {
@@ -74,47 +79,64 @@ namespace LLama.Native
                             // On OSX, we should load the CPU backend from the current directory
                             
                             // ggml-cpu
-                            dependencyPaths.Add(Path.Combine(currentRuntimeDirectory, $"{libPrefix}ggml-cpu{ext}"));
+                            AddDependency(Path.Combine(currentRuntimeDirectory, $"{libPrefix}ggml-cpu{ext}"));
 
                             // ggml-metal (only supported on osx-arm64)
                             if (os == "osx-arm64")
-                                dependencyPaths.Add(Path.Combine(currentRuntimeDirectory, $"{libPrefix}ggml-metal{ext}"));
+                                AddDependency(Path.Combine(currentRuntimeDirectory, $"{libPrefix}ggml-metal{ext}"));
                             
                             // ggml-blas (osx-x64, osx-x64-rosetta2 and osx-arm64 all have blas)
-                            dependencyPaths.Add(Path.Combine(currentRuntimeDirectory, $"{libPrefix}ggml-blas{ext}"));
+                            AddDependency(Path.Combine(currentRuntimeDirectory, $"{libPrefix}ggml-blas{ext}"));
                         }
                         else
                         {
+                            // Probe backend-required DLLs first. If these are missing (for example CUDA on
+                            // non-NVIDIA systems), we skip the candidate before loading shared ggml base libs.
+                            // This avoids cross-candidate ABI contamination when falling back to another backend.
+                            if (library.Metadata.UseCuda)
+                                AddDependency(Path.Combine(currentRuntimeDirectory, $"{libPrefix}ggml-cuda{ext}"));
+
+                            if (library.Metadata.UseVulkan)
+                                AddDependency(Path.Combine(currentRuntimeDirectory, $"{libPrefix}ggml-vulkan{ext}"));
+
                             // On other platforms (Windows, Linux), we need to load the CPU backend from the specified AVX level directory
                             // We are using the AVX level supplied by NativeLibraryConfig, which automatically detects the highest supported AVX level for us
                             
                             if (os == "linux-arm64"){
-                                dependencyPaths.Add(Path.Combine(
+                                AddDependency(Path.Combine(
                                     $"runtimes/{os}/native", 
                                     $"{libPrefix}ggml-cpu{ext}"
                                 ));
                             }
                             else{
                                 // ggml-cpu
-                                dependencyPaths.Add(Path.Combine(
+                                AddDependency(Path.Combine(
                                     $"runtimes/{os}/native/{NativeLibraryConfig.AvxLevelToString(library.Metadata.AvxLevel)}",
                                     $"{libPrefix}ggml-cpu{ext}"
                                 ));
 
-                                // ggml-cuda
-                                if (library.Metadata.UseCuda)
-                                    dependencyPaths.Add(Path.Combine(currentRuntimeDirectory, $"{libPrefix}ggml-cuda{ext}"));
-                        
-                                // ggml-vulkan
-                                if (library.Metadata.UseVulkan)
-                                    dependencyPaths.Add(Path.Combine(currentRuntimeDirectory, $"{libPrefix}ggml-vulkan{ext}"));
+                                // Newer official llama.cpp builds use dynamic cpu plugin binaries
+                                // (e.g. ggml-cpu-x64.dll / ggml-cpu-haswell.dll) colocated with the backend.
+                                // We preload whatever is present so ggml can resolve them reliably.
+                                if (os.StartsWith("win-", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    foreach (var cpuPlugin in SafeEnumerateFiles(currentRuntimeDirectory, "ggml-cpu-*.dll"))
+                                    {
+                                        AddDependency(cpuPlugin);
+                                    }
+
+                                    AddDependency(Path.Combine(currentRuntimeDirectory, "ggml-rpc.dll"));
+                                }
                             }
 
                         }
                     }
+
+                    // We always load ggml-base before ggml regardless of backend.
+                    AddDependency(Path.Combine(currentRuntimeDirectory, $"{libPrefix}ggml-base{ext}"));
                     
                     // And finally, we can add ggml
-                    dependencyPaths.Add(Path.Combine(currentRuntimeDirectory, $"{libPrefix}ggml{ext}"));
+                    AddDependency(Path.Combine(currentRuntimeDirectory, $"{libPrefix}ggml{ext}"));
                     
                     // Now, we will loop through our dependencyPaths and try to load them one by one
                     var requiredDependencyMissing = false;
@@ -183,7 +205,7 @@ namespace LLama.Native
                 Log($"Found full path file '{fullPath}' for relative path '{path}'", LLamaLogLevel.Debug, logCallback);
                 if (NativeLibrary.TryLoad(fullPath, out var handle))
                 {
-                    NativeApi.RegisterRuntimeDirectory(Path.GetDirectoryName(fullPath));
+                    RuntimeDirectoryRegistry.Register(Path.GetDirectoryName(fullPath));
                     Log($"Successfully loaded '{fullPath}'", LLamaLogLevel.Info, logCallback);
                     return handle;
                 }
@@ -246,8 +268,13 @@ namespace LLama.Native
             }
 
             // Always required for llama.cpp bootstrap regardless of backend.
-            if (IsLibrary("ggml-base") || IsLibrary("ggml-cpu") || IsLibrary("ggml"))
+            if (IsLibrary("ggml-base") || IsLibrary("ggml"))
                 return true;
+
+            // ggml-cpu became plugin-based in newer official binaries and may not exist as a
+            // single hard dependency anymore. Keep it optional to avoid false candidate skips.
+            if (IsLibrary("ggml-cpu"))
+                return false;
 
             // Backend-specific plugin dependencies.
             if (metadata?.UseCuda == true && IsLibrary("ggml-cuda"))
@@ -256,6 +283,18 @@ namespace LLama.Native
                 return true;
 
             return false;
+        }
+
+        private static IEnumerable<string> SafeEnumerateFiles(string directory, string pattern)
+        {
+            try
+            {
+                return Directory.EnumerateFiles(directory, pattern).OrderBy(item => item, StringComparer.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return Array.Empty<string>();
+            }
         }
 
 #if NET6_0_OR_GREATER

@@ -115,42 +115,14 @@ namespace LLama.Native
         internal const string ggmlLibraryName = "ggml";
         internal const string ggmlBaseLibraryName = "ggml-base";
 
-        private static readonly object _runtimeDirectoriesLock = new();
-        private static readonly HashSet<string> _runtimeDirectories = new(StringComparer.OrdinalIgnoreCase);
-
         private static INativeLibrary? _loadedLLamaLibrary = null;
         private static INativeLibrary? _loadedMtmdLibrary = null;
 
         internal static void RegisterRuntimeDirectory(string? directory)
-        {
-            if (string.IsNullOrWhiteSpace(directory))
-                return;
-
-            string normalizedPath;
-            try
-            {
-                normalizedPath = Path.GetFullPath(directory);
-            }
-            catch
-            {
-                return;
-            }
-
-            lock (_runtimeDirectoriesLock)
-            {
-                _runtimeDirectories.Add(normalizedPath);
-            }
-        }
+            => RuntimeDirectoryRegistry.Register(directory);
 
         private static string[] GetRegisteredRuntimeDirectories()
-        {
-            lock (_runtimeDirectoriesLock)
-            {
-                var directories = new string[_runtimeDirectories.Count];
-                _runtimeDirectories.CopyTo(directories);
-                return directories;
-            }
-        }
+            => RuntimeDirectoryRegistry.Snapshot();
 
         private static void EnsureBackendsLoaded()
         {

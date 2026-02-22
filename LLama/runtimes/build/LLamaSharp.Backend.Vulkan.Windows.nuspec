@@ -25,6 +25,10 @@
         <file src="runtimes/deps/vulkan/ggml.dll" target="LLamaSharpRuntimes\win-x64\native\vulkan\ggml.dll" />
         <file src="runtimes/deps/vulkan/ggml-base.dll" target="LLamaSharpRuntimes\win-x64\native\vulkan\ggml-base.dll" />
         <file src="runtimes/deps/vulkan/ggml-vulkan.dll" target="LLamaSharpRuntimes\win-x64\native\vulkan\ggml-vulkan.dll" />
+        <file src="runtimes/deps/vulkan/ggml-cpu.dll" target="LLamaSharpRuntimes\win-x64\native\vulkan\ggml-cpu.dll" />
+        <file src="runtimes/deps/vulkan/ggml-cpu-*.dll" target="LLamaSharpRuntimes\win-x64\native\vulkan" />
+        <file src="runtimes/deps/vulkan/ggml-rpc.dll" target="LLamaSharpRuntimes\win-x64\native\vulkan\ggml-rpc.dll" />
+        <file src="runtimes/deps/vulkan/libomp140.x86_64.dll" target="LLamaSharpRuntimes\win-x64\native\vulkan\libomp140.x86_64.dll" />
 
         <file src="runtimes/deps/vulkan/llama.dll" target="LLamaSharpRuntimes\win-x64\native\vulkan\llama.dll" />
         <file src="runtimes/deps/vulkan/mtmd.dll" target="LLamaSharpRuntimes\win-x64\native\vulkan\mtmd.dll" />
