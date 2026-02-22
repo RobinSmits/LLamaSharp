@@ -1,3 +1,11 @@
+<#
+FORK-MAINTENANCE NOTE (GLM-OCR branch)
+- This script can apply `scripts/patches/llama.cpp.mtmd-tools.patch` before packing.
+- The patch is tracked in this repo so local package rebuilds stay reproducible after upstream LLamaSharp merges.
+- If upstream llama.cpp changes and patch apply fails, update the patch file and commit it in this branch.
+- If you later maintain your own llama.cpp fork, commit equivalent changes there and update submodule URL/pointer.
+#>
+
 param(
     [string]$Version = "0.26.1-glmocr-local4",
     [string]$Configuration = "Release",
@@ -39,6 +47,7 @@ function Apply-OptionalLlamaCppPatch {
     Write-Host "Checking optional llama.cpp local patch..."
     Push-Location $llamaCppRoot
     try {
+        # Keep this idempotent so repeated local rebuilds remain deterministic.
         # Already applied? Keep going without changing local work.
         & git apply --reverse --check $patchPath *> $null
         if ($LASTEXITCODE -eq 0) {
@@ -47,6 +56,7 @@ function Apply-OptionalLlamaCppPatch {
         }
 
         # Not applied yet; apply now.
+        # Fail fast when upstream drift requires a patch refresh.
         & git apply --check $patchPath *> $null
         if ($LASTEXITCODE -ne 0) {
             throw "Unable to apply local llama.cpp patch '$patchPath'. Resolve submodule state first."

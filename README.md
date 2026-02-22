@@ -43,6 +43,16 @@
 - [Full documentation](https://scisharp.github.io/LLamaSharp/latest/)
 - [API reference](https://scisharp.github.io/LLamaSharp/latest/xmldocs/)
 
+## 🔧 GLM-OCR Fork Maintenance Notes
+
+For this fork's `GLM-OCR` branch, local packaging/rebuild guidance is intentionally tracked in-repo:
+
+- `scripts/pack-local-glm-ocr.ps1` packs local LLamaSharp + backend packages.
+- `scripts/patches/llama.cpp.mtmd-tools.patch` stores branch-specific `llama.cpp` CMake adjustments.
+- `scripts/patches/README.md` describes upstream merge + patch refresh workflow.
+
+This allows future upstream merges from LLamaSharp while preserving a reproducible local rebuild path.
+
 
 ## 📌Console Demo
 
